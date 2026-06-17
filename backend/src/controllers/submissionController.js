@@ -43,10 +43,17 @@ export const submitAssignment = async (req, res) => {
         fs.unlinkSync(oldFilePath)
       }
 
+      let fileName
+      try {
+        fileName = Buffer.from(file.originalname, 'latin1').toString('utf8')
+      } catch (e) {
+        fileName = file.originalname
+      }
+
       const submission = await prisma.submission.update({
         where: { id: existingSubmission.id },
         data: {
-          fileName: file.originalname,
+          fileName,
           filePath: path.relative(path.join(__dirname, '../..'), file.path),
           fileSize: file.size,
           submittedAt: now,
@@ -65,11 +72,18 @@ export const submitAssignment = async (req, res) => {
       })
     }
 
+    let createFileName
+    try {
+      createFileName = Buffer.from(file.originalname, 'latin1').toString('utf8')
+    } catch (e) {
+      createFileName = file.originalname
+    }
+
     const submission = await prisma.submission.create({
       data: {
         assignmentId: parseInt(assignmentId),
         studentId: req.user.id,
-        fileName: file.originalname,
+        fileName: createFileName,
         filePath: path.relative(path.join(__dirname, '../..'), file.path),
         fileSize: file.size,
         status: isOverdue ? 'OVERDUE' : 'SUBMITTED'

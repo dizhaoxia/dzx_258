@@ -4,8 +4,7 @@ import {
   ClockCircleOutlined,
   CheckCircleOutlined,
   UserOutlined,
-  ArrowRightOutlined,
-  FileTextOutlined
+  ArrowRightOutlined
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
@@ -96,13 +95,14 @@ const AssignmentList = () => {
             <Col xs={24} sm={12} md={8} lg={6} key={assignment.id}>
               <Card
                 hoverable
-                style={{ height: '100%' }}
-                bodyStyle={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+                style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+                bodyStyle={{ flex: 1, paddingBottom: 8 }}
                 actions={[
                   <Button
                     type="link"
                     icon={<ArrowRightOutlined />}
                     onClick={() => handleViewDetail(assignment.id)}
+                    key="detail"
                   >
                     查看详情
                   </Button>
@@ -118,13 +118,8 @@ const AssignmentList = () => {
                       </span>
                     }
                   />
-                  {assignment.fileName && (
-                    <Tag color="blue" icon={<FileTextOutlined />} style={{ marginLeft: 8 }}>
-                      附件
-                    </Tag>
-                  )}
                 </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 80 }}>
                   <div>
                     <div style={{ marginBottom: 8 }}>
                       {getStatusTag(assignment)}

@@ -40,7 +40,8 @@ const CreateAssignment = () => {
       formData.append('userId', user.id)
 
       if (fileList.length > 0) {
-        formData.append('file', fileList[0].originFileObj)
+        const fileObj = fileList[0].originFileObj || fileList[0]
+        formData.append('file', fileObj)
       }
 
       await createAssignment(formData, (progressEvent) => {

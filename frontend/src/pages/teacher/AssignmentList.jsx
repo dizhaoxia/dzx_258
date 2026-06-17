@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Table, Button, Tag, Space, Popconfirm, message, Typography } from 'antd'
-import { PlusOutlined, EyeOutlined, DeleteOutlined, FileTextOutlined } from '@ant-design/icons'
+import { PlusOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import { getAssignments, deleteAssignment } from '../../api/assignment'
@@ -65,16 +65,6 @@ const AssignmentList = () => {
       key: 'title',
       width: 200,
       ellipsis: true
-    },
-    {
-      title: '附件',
-      key: 'attachment',
-      width: 80,
-      render: (_, record) => record.fileName ? (
-        <Tag color="blue" icon={<FileTextOutlined />}>有附件</Tag>
-      ) : (
-        <Tag color="default">无附件</Tag>
-      )
     },
     {
       title: '截止时间',

@@ -19,13 +19,22 @@ export const createAssignment = async (req, res) => {
       return res.status(400).json({ message: '请填写完整信息' })
     }
 
+    let fileName = null
+    if (file) {
+      try {
+        fileName = Buffer.from(file.originalname, 'latin1').toString('utf8')
+      } catch (e) {
+        fileName = file.originalname
+      }
+    }
+
     const assignment = await prisma.assignment.create({
       data: {
         title,
         description,
         deadline: new Date(deadline),
         teacherId: req.user.id,
-        fileName: file ? file.originalname : null,
+        fileName,
         filePath: file ? path.relative(path.join(__dirname, '../..'), file.path) : null,
         fileSize: file ? file.size : null
       },

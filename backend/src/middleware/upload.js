@@ -29,7 +29,10 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const timestamp = Date.now()
-    const originalName = file.originalname
+    let originalName = file.originalname
+    try {
+      originalName = Buffer.from(originalName, 'latin1').toString('utf8')
+    } catch (e) {}
     const ext = path.extname(originalName)
     const nameWithoutExt = path.basename(originalName, ext)
     const safeName = nameWithoutExt.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')
