@@ -22,3 +22,15 @@ export const deleteAssignment = (id) => {
 export const getSubmissions = (assignmentId) => {
   return api.get(`/assignments/${assignmentId}/submissions`)
 }
+
+export const batchDownloadSubmissions = (assignmentId) => {
+  window.open(`/api/files/assignment/${assignmentId}/batch-download`, '_blank')
+}
+
+export const searchStudents = (name) => {
+  return api.get('/files/students/search', { params: { name } })
+}
+
+export const downloadStudentSubmissions = (studentId) => {
+  window.open(`/api/files/student/${studentId}/submissions/download`, '_blank')
+}

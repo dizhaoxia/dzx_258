@@ -139,12 +139,53 @@ const AssignmentList = () => {
       render: (isOverdue) => getStatusTag(isOverdue)
     },
     {
-      title: '提交/批改',
-      key: 'submissionCount',
+      title: '提交概览',
+      key: 'submissionStats',
+      width: 180,
+      render: (_, record) => {
+        const stats = record.stats
+        if (!stats) return null
+        return (
+          <div>
+            <div style={{ marginBottom: 4 }}>
+              <span style={{ color: '#52c41a', fontWeight: 500 }}>{stats.submittedCount}</span>
+              <span style={{ color: '#999' }}>/{stats.totalStudents} 人已提交</span>
+            </div>
+            <div>
+              <span style={{ color: '#faad14', fontWeight: 500 }}>{stats.pendingCount}</span>
+              <span style={{ color: '#999' }}> 人待批改</span>
+            </div>
+          </div>
+        )
+      }
+    },
+    {
+      title: '提交率',
+      key: 'submissionRate',
       width: 120,
       render: (_, record) => {
-        const total = record._count?.submissions || 0
-        return <span>{total} 人</span>
+        const stats = record.stats
+        if (!stats) return null
+        const rate = stats.submissionRate
+        let color = '#52c41a'
+        if (rate < 60) color = '#ff4d4f'
+        else if (rate < 80) color = '#faad14'
+        return (
+          <div>
+            <div style={{ color, fontWeight: 500, marginBottom: 4 }}>{rate}%</div>
+            <div style={{ width: '100%', height: 6, background: '#f0f0f0', borderRadius: 3 }}>
+              <div
+                style={{
+                  width: `${rate}%`,
+                  height: '100%',
+                  background: color,
+                  borderRadius: 3,
+                  transition: 'width 0.3s'
+                }}
+              />
+            </div>
+          </div>
+        )
       }
     },
     {
@@ -262,7 +303,7 @@ const AssignmentList = () => {
         dataSource={dataSource}
         rowKey="id"
         loading={loading}
-        scroll={{ x: 900 }}
+        scroll={{ x: 1200 }}
         pagination={{
           current: page,
           pageSize: pageSize,

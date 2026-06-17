@@ -110,6 +110,8 @@ export const getAssignments = async (req, res) => {
       submissions: req.user.role === 'STUDENT' ? {
         where: { studentId: req.user.id },
         take: 1
+      } : req.user.role === 'TEACHER' ? {
+        select: { id: true, status: true, score: true, studentId: true }
       } : undefined,
       _count: {
         select: { submissions: true }
@@ -126,6 +128,13 @@ export const getAssignments = async (req, res) => {
 
     const total = await prisma.assignment.count({ where })
 
+    let totalStudents = 0
+    if (req.user.role === 'TEACHER') {
+      totalStudents = await prisma.user.count({
+        where: { role: 'STUDENT' }
+      })
+    }
+
     const now = new Date()
     let assignmentsWithStatus = assignments.map(assignment => {
       const isOverdue = now > new Date(assignment.deadline)
@@ -141,6 +150,21 @@ export const getAssignments = async (req, res) => {
       if (submitted && mySubmission?.status === 'SUBMITTED') derivedStatus = '已提交'
       if (submitted && isGraded) derivedStatus = '已评分'
 
+      let stats = null
+      if (req.user.role === 'TEACHER') {
+        const submissions = assignment.submissions || []
+        const submittedCount = submissions.length
+        const gradedCount = submissions.filter(s => s.status === 'GRADED').length
+        const pendingCount = submissions.filter(s => s.status !== 'GRADED').length
+        stats = {
+          totalStudents,
+          submittedCount,
+          gradedCount,
+          pendingCount,
+          submissionRate: totalStudents > 0 ? Math.round((submittedCount / totalStudents) * 100) : 0
+        }
+      }
+
       return {
         ...assignment,
         submissions: undefined,
@@ -149,7 +173,8 @@ export const getAssignments = async (req, res) => {
         isGraded,
         mySubmission,
         status: isOverdue ? '已截止' : '进行中',
-        derivedStatus
+        derivedStatus,
+        stats
       }
     })
 

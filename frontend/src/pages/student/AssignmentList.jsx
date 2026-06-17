@@ -67,10 +67,10 @@ const AssignmentList = () => {
   const getStatusTag = (assignment) => {
     if (assignment.derivedStatus === '已评分') {
       return (
-        <Tag icon={<TrophyOutlined />} color="gold">
+        <Tag icon={<TrophyOutlined />} color="gold" style={{ fontSize: 14, padding: '4px 12px', borderRadius: 4 }}>
           已评分
           {assignment.mySubmission?.score !== null && assignment.mySubmission?.score !== undefined && (
-            <span style={{ marginLeft: 4 }}>
+            <span style={{ marginLeft: 4, fontWeight: 'bold' }}>
               {assignment.mySubmission.score}分
             </span>
           )}
@@ -80,14 +80,33 @@ const AssignmentList = () => {
     if (assignment.submitted) {
       const status = assignment.mySubmission?.status
       if (status === 'OVERDUE') {
-        return <Tag color="orange">逾期提交</Tag>
+        return <Tag color="error" style={{ fontSize: 14, padding: '4px 12px', borderRadius: 4 }}>逾期提交</Tag>
       }
-      return <Tag icon={<CheckCircleOutlined />} color="success">已提交</Tag>
+      return <Tag icon={<CheckCircleOutlined />} color="warning" style={{ fontSize: 14, padding: '4px 12px', borderRadius: 4 }}>待批改</Tag>
     }
     if (assignment.isOverdue) {
-      return <Tag color="error">已截止</Tag>
+      return <Tag color="error" style={{ fontSize: 14, padding: '4px 12px', borderRadius: 4 }}>已截止</Tag>
     }
-    return <Tag color="processing">进行中</Tag>
+    return <Tag icon={<ClockCircleOutlined />} color="processing" style={{ fontSize: 14, padding: '4px 12px', borderRadius: 4 }}>待提交</Tag>
+  }
+
+  const getCardStyle = (assignment) => {
+    const isOverdueSubmitted = assignment.submitted && assignment.mySubmission?.status === 'OVERDUE'
+    const isOverdueNotSubmitted = assignment.isOverdue && !assignment.submitted
+    if (isOverdueSubmitted || isOverdueNotSubmitted) {
+      return {
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        border: '2px solid #ff4d4f',
+        boxShadow: '0 2px 8px rgba(255, 77, 79, 0.15)'
+      }
+    }
+    return {
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column'
+    }
   }
 
   const getRemainingDays = (deadline) => {
@@ -183,10 +202,10 @@ const AssignmentList = () => {
                   allowClear
                   style={{ width: '100%' }}
                 >
-                  <Option value="进行中">待提交（进行中）</Option>
-                  <Option value="已提交">已提交</Option>
+                  <Option value="进行中">待提交</Option>
+                  <Option value="已提交">待批改</Option>
                   <Option value="已评分">已评分</Option>
-                  <Option value="逾期提交">已逾期</Option>
+                  <Option value="逾期提交">逾期提交</Option>
                   <Option value="已截止">已截止（未提交）</Option>
                 </Select>
               </Form.Item>
@@ -222,7 +241,7 @@ const AssignmentList = () => {
             <Col xs={24} sm={12} md={8} lg={6} key={assignment.id}>
               <Card
                 hoverable
-                style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+                style={getCardStyle(assignment)}
                 bodyStyle={{ flex: 1, paddingBottom: 8 }}
                 actions={[
                   <Button
@@ -267,8 +286,23 @@ const AssignmentList = () => {
                     </div>
                   </div>
                   {!assignment.isOverdue && !assignment.submitted && (
-                    <div style={{ marginTop: 8, color: '#faad14', fontSize: 12 }}>
-                      剩余 {getRemainingDays(assignment.deadline)} 天
+                    <div style={{ marginTop: 8, color: '#faad14', fontSize: 12, fontWeight: 500 }}>
+                      ⏰ 剩余 {getRemainingDays(assignment.deadline)} 天
+                    </div>
+                  )}
+                  {assignment.submitted && assignment.mySubmission?.status === 'OVERDUE' && (
+                    <div style={{ marginTop: 8, color: '#ff4d4f', fontSize: 12, fontWeight: 'bold' }}>
+                      ⚠️ 逾期提交，请注意截止时间
+                    </div>
+                  )}
+                  {assignment.isOverdue && !assignment.submitted && (
+                    <div style={{ marginTop: 8, color: '#ff4d4f', fontSize: 12, fontWeight: 'bold' }}>
+                      ⚠️ 已截止，无法提交
+                    </div>
+                  )}
+                  {assignment.submitted && assignment.mySubmission?.status === 'SUBMITTED' && (
+                    <div style={{ marginTop: 8, color: '#1890ff', fontSize: 12 }}>
+                      📝 等待教师批改中...
                     </div>
                   )}
                 </div>

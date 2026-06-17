@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import {
   Descriptions,
   Tag,
@@ -24,7 +24,7 @@ import {
 } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import dayjs from 'dayjs'
-import { getAssignmentDetail } from '../../api/assignment'
+import { getAssignmentDetail, batchDownloadSubmissions, searchStudents, downloadStudentSubmissions } from '../../api/assignment'
 import { gradeSubmission, getSubmissionDetail } from '../../api/submission'
 import FilePreview from '../../components/FilePreview'
 
@@ -44,6 +44,11 @@ const AssignmentDetail = () => {
   const [previewFile, setPreviewFile] = useState(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [submissionLoading, setSubmissionLoading] = useState(false)
+  const [searchName, setSearchName] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searchDropdownOpen, setSearchDropdownOpen] = useState(false)
+  const [downloading, setDownloading] = useState({})
+  const searchContainerRef = useRef(null)
 
   const fetchAssignmentDetail = async () => {
     setLoading(true)
@@ -63,6 +68,16 @@ const AssignmentDetail = () => {
       fetchAssignmentDetail()
     }
   }, [id])
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setSearchDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const getStatusTag = (isOverdue) => {
     if (isOverdue) {
@@ -147,6 +162,52 @@ const AssignmentDetail = () => {
     window.open(`/api/files/assignment/download/${assignment.id}`, '_blank')
   }
 
+  const handleBatchDownload = () => {
+    if (submissions.length === 0) {
+      message.warning('暂无学生提交')
+      return
+    }
+    setDownloading(prev => ({ ...prev, batch: true }))
+    try {
+      batchDownloadSubmissions(id)
+      message.success('批量下载已开始')
+    } catch (error) {
+      message.error('批量下载失败')
+    } finally {
+      setTimeout(() => setDownloading(prev => ({ ...prev, batch: false })), 1000)
+    }
+  }
+
+  const handleSearchStudent = async (value) => {
+    if (!value || value.trim() === '') {
+      setSearchResults([])
+      setSearchDropdownOpen(false)
+      return
+    }
+    try {
+      const res = await searchStudents(value.trim())
+      setSearchResults(res.students || [])
+      setSearchDropdownOpen((res.students || []).length > 0)
+    } catch (error) {
+      message.error('搜索学生失败')
+    }
+  }
+
+  const handleDownloadStudentAll = (student) => {
+    setDownloading(prev => ({ ...prev, [student.id]: true }))
+    try {
+      downloadStudentSubmissions(student.id)
+      message.success(`正在下载 ${student.name} 的历次作业`)
+    } catch (error) {
+      message.error('下载失败')
+    } finally {
+      setTimeout(() => setDownloading(prev => ({ ...prev, [student.id]: false })), 1000)
+    }
+    setSearchDropdownOpen(false)
+    setSearchName('')
+    setSearchResults([])
+  }
+
   const submissionColumns = [
     {
       title: '学生姓名',
@@ -190,9 +251,9 @@ const AssignmentDetail = () => {
     {
       title: '操作',
       key: 'action',
-      width: 200,
+      width: 280,
       render: (_, record) => (
-        <Space size="small">
+        <Space size="small" wrap>
           <Button
             type="link"
             size="small"
@@ -216,6 +277,15 @@ const AssignmentDetail = () => {
             onClick={() => handleDownloadSubmission(record)}
           >
             下载
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            icon={<DownloadOutlined />}
+            loading={downloading[record.studentId]}
+            onClick={() => handleDownloadStudentAll(record.student)}
+          >
+            历次作业
           </Button>
         </Space>
       )
@@ -308,11 +378,93 @@ const AssignmentDetail = () => {
         </Descriptions>
       </Card>
 
-      <Card title={`学生提交列表（${submissions.length}人）`}>
+      <Card
+        title={`学生提交列表（${submissions.length}人）`}
+        extra={
+          <Space>
+            <div ref={searchContainerRef} style={{ position: 'relative' }}>
+              <Input.Search
+                placeholder="搜索学生姓名下载历次作业"
+                allowClear
+                style={{ width: 280 }}
+                onSearch={handleSearchStudent}
+                onChange={(e) => {
+                  setSearchName(e.target.value)
+                  if (!e.target.value) {
+                    setSearchResults([])
+                    setSearchDropdownOpen(false)
+                  }
+                }}
+                value={searchName}
+              />
+              {searchDropdownOpen && searchResults.length > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    background: '#fff',
+                    border: '1px solid #d9d9d9',
+                    borderRadius: 4,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    zIndex: 1000,
+                    maxHeight: 300,
+                    overflowY: 'auto',
+                    marginTop: 4
+                  }}
+                >
+                  {searchResults.map((student) => (
+                  <div
+                    key={student.id}
+                    style={{
+                      padding: '12px 16px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: '1px solid #f0f0f0'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f5f5f5' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = '#fff' }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 500 }}>{student.name}</div>
+                      <div style={{ fontSize: 12, color: '#999' }}>
+                        {student.studentNo} {student.className || ''}
+                      </div>
+                    </div>
+                    <Button
+                      type="link"
+                      size="small"
+                      icon={<DownloadOutlined />}
+                      loading={downloading[student.id]}
+                      onClick={() => handleDownloadStudentAll(student)}
+                    >
+                      下载历次作业
+                    </Button>
+                  </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <Button
+              type="primary"
+              icon={<DownloadOutlined />}
+              onClick={handleBatchDownload}
+              loading={downloading.batch}
+              disabled={submissions.length === 0}
+            >
+              批量下载全部
+            </Button>
+          </Space>
+        }
+      >
         <Table
           columns={submissionColumns}
           dataSource={submissions}
           rowKey="id"
+          scroll={{ x: 1000 }}
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
