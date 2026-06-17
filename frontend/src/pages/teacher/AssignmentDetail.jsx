@@ -18,7 +18,9 @@ import {
   ArrowLeftOutlined,
   EyeOutlined,
   DownloadOutlined,
-  FileTextOutlined
+  FileTextOutlined,
+  TrophyOutlined,
+  CheckCircleOutlined
 } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import dayjs from 'dayjs'
@@ -69,11 +71,19 @@ const AssignmentDetail = () => {
     return <Tag color="green">进行中</Tag>
   }
 
-  const getSubmissionStatusTag = (status) => {
+  const getSubmissionStatusTag = (status, score) => {
+    if (status === 'GRADED') {
+      return (
+        <Tag icon={<TrophyOutlined />} color="gold">
+          已评分
+          {score !== null && score !== undefined ? ` (${score}分)` : ''}
+        </Tag>
+      )
+    }
     if (status === 'OVERDUE') {
       return <Tag color="orange">逾期</Tag>
     }
-    return <Tag color="green">已提交</Tag>
+    return <Tag icon={<CheckCircleOutlined />} color="success">已提交</Tag>
   }
 
   const handleViewSubmission = async (submission) => {
@@ -167,8 +177,8 @@ const AssignmentDetail = () => {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      width: 100,
-      render: (status) => getSubmissionStatusTag(status)
+      width: 120,
+      render: (status, record) => getSubmissionStatusTag(status, record.score)
     },
     {
       title: '分数',
@@ -243,6 +253,15 @@ const AssignmentDetail = () => {
           <Descriptions.Item label="作业标题">
             {assignment.title}
           </Descriptions.Item>
+          {(assignment.courseName || assignment.semester || assignment.week) && (
+            <Descriptions.Item label="课程信息">
+              <Space wrap>
+                {assignment.courseName && <Tag color="blue">{assignment.courseName}</Tag>}
+                {assignment.semester && <Tag color="purple">{assignment.semester.replace(/-(\d)$/, ' 第$1学期')}</Tag>}
+                {assignment.week && <Tag color="cyan">第 {assignment.week} 周</Tag>}
+              </Space>
+            </Descriptions.Item>
+          )}
           <Descriptions.Item label="作业描述">
             <div style={{ whiteSpace: 'pre-wrap' }}>
               {assignment.description}
@@ -341,11 +360,11 @@ const AssignmentDetail = () => {
                   : '-'}
               </Descriptions.Item>
               <Descriptions.Item label="提交状态">
-                {getSubmissionStatusTag(currentSubmission?.status)}
+                {getSubmissionStatusTag(currentSubmission?.status, currentSubmission?.score)}
               </Descriptions.Item>
               <Descriptions.Item label="当前分数">
                 {currentSubmission?.score !== null && currentSubmission?.score !== undefined
-                  ? currentSubmission.score
+                  ? <span style={{ fontWeight: 'bold', color: '#d48806', fontSize: 16 }}>{currentSubmission.score} 分</span>
                   : '未打分'}
               </Descriptions.Item>
             </Descriptions>

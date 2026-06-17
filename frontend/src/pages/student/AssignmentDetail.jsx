@@ -22,7 +22,8 @@ import {
   FileTextOutlined,
   InboxOutlined,
   ReloadOutlined,
-  ArrowLeftOutlined
+  ArrowLeftOutlined,
+  TrophyOutlined
 } from '@ant-design/icons'
 import { useParams, useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
@@ -200,13 +201,17 @@ const AssignmentDetail = () => {
     return (
       <div>
         <div style={{ marginBottom: 12 }}>
-          {mySubmission.status === 'OVERDUE' ? (
+          {mySubmission.status === 'GRADED' ? (
+            <Tag icon={<TrophyOutlined />} color="gold">已评分</Tag>
+          ) : mySubmission.status === 'OVERDUE' ? (
             <Tag color="orange">逾期提交</Tag>
           ) : (
             <Tag color="success">已提交</Tag>
           )}
           {mySubmission.score !== null && mySubmission.score !== undefined && (
-            <Tag color="blue">得分：{mySubmission.score} 分</Tag>
+            <Tag color="gold" style={{ fontWeight: 'bold', fontSize: 14, padding: '2px 10px' }}>
+              得分：{mySubmission.score} 分
+            </Tag>
           )}
         </div>
         <div style={{ marginBottom: 8 }}>
@@ -236,9 +241,12 @@ const AssignmentDetail = () => {
           </div>
         )}
         {mySubmission.feedback && (
-          <div style={{ marginTop: 12, padding: 12, background: '#f5f5f5', borderRadius: 4 }}>
-            <div style={{ fontWeight: 'bold', marginBottom: 4 }}>教师评语：</div>
-            <div>{mySubmission.feedback}</div>
+          <div style={{ marginTop: 12, padding: 16, background: '#fffbe6', borderRadius: 6, border: '1px solid #ffe58f' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: 8, color: '#d46b08' }}>
+              <TrophyOutlined style={{ marginRight: 6 }} />
+              教师评语与反馈：
+            </div>
+            <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{mySubmission.feedback}</div>
           </div>
         )}
       </div>

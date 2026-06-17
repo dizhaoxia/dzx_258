@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Layout, Menu, Avatar, Dropdown, Button } from 'antd'
 import {
   FileTextOutlined,
-  CheckCircleOutlined,
+  HistoryOutlined,
   UserOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
@@ -27,8 +27,8 @@ const StudentLayout = () => {
     },
     {
       key: '/student/submitted',
-      icon: <CheckCircleOutlined />,
-      label: '已提交作业'
+      icon: <HistoryOutlined />,
+      label: '历史作业'
     }
   ]
 

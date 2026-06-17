@@ -8,7 +8,11 @@ import {
   message,
   Typography,
   Card,
-  Progress
+  Progress,
+  Row,
+  Col,
+  Select,
+  InputNumber
 } from 'antd'
 import { UploadOutlined, ArrowLeftOutlined, InboxOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
@@ -19,6 +23,17 @@ import useUserStore from '../../store/userStore'
 const { Title } = Typography
 const { TextArea } = Input
 const { Dragger } = Upload
+const { Option } = Select
+
+const generateSemesters = () => {
+  const currentYear = new Date().getFullYear()
+  const semesters = []
+  for (let year = currentYear - 2; year <= currentYear + 1; year++) {
+    semesters.push(`${year}-${year + 1}-1`)
+    semesters.push(`${year}-${year + 1}-2`)
+  }
+  return semesters
+}
 
 const CreateAssignment = () => {
   const navigate = useNavigate()
@@ -38,6 +53,16 @@ const CreateAssignment = () => {
       formData.append('deadline', values.deadline.format('YYYY-MM-DD HH:mm:ss'))
       formData.append('type', 'assignment')
       formData.append('userId', user.id)
+
+      if (values.courseName) {
+        formData.append('courseName', values.courseName)
+      }
+      if (values.semester) {
+        formData.append('semester', values.semester)
+      }
+      if (values.week) {
+        formData.append('week', values.week)
+      }
 
       if (fileList.length > 0) {
         const fileObj = fileList[0].originFileObj || fileList[0]
@@ -84,6 +109,8 @@ const CreateAssignment = () => {
     multiple: false
   }
 
+  const semesters = generateSemesters()
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
@@ -106,6 +133,49 @@ const CreateAssignment = () => {
             deadline: dayjs().add(7, 'day')
           }}
         >
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <Form.Item
+                label="课程名称"
+                name="courseName"
+                rules={[{ max: 50, message: '课程名称不能超过50个字符' }]}
+              >
+                <Input placeholder="请输入课程名称（选填，用于筛选）" size="large" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item
+                label="学期"
+                name="semester"
+              >
+                <Select
+                  placeholder="请选择学期（选填，用于筛选）"
+                  size="large"
+                  allowClear
+                  showSearch
+                >
+                  {semesters.map(sem => (
+                    <Option key={sem} value={sem}>{sem.replace(/-(\d)$/, ' 第$1学期')}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            label="周次"
+            name="week"
+            rules={[{ type: 'number', min: 1, max: 30, message: '周次应在1-30之间' }]}
+          >
+            <InputNumber
+              min={1}
+              max={30}
+              style={{ width: '100%' }}
+              placeholder="请输入周次（选填，用于筛选）"
+              size="large"
+            />
+          </Form.Item>
+
           <Form.Item
             label="作业标题"
             name="title"

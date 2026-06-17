@@ -7,8 +7,8 @@ export const submitAssignment = (assignmentId, formData, onUploadProgress) => {
   })
 }
 
-export const getMySubmissions = () => {
-  return api.get('/submissions/mine')
+export const getMySubmissions = (params) => {
+  return api.get('/submissions/mine', { params })
 }
 
 export const getSubmissionDetail = (id) => {

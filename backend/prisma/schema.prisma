@@ -30,6 +30,9 @@ model Assignment {
   fileName    String?
   filePath    String?
   fileSize    Int?
+  courseName  String?
+  semester    String?
+  week        Int?
   teacherId   Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

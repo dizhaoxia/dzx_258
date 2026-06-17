@@ -1,24 +1,48 @@
 import React, { useEffect, useState } from 'react'
-import { Table, Button, Tag, Space, Popconfirm, message, Typography } from 'antd'
-import { PlusOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons'
+import {
+  Table,
+  Button,
+  Tag,
+  Space,
+  Popconfirm,
+  message,
+  Typography,
+  Form,
+  Input,
+  DatePicker,
+  Select,
+  Row,
+  Col,
+  Card
+} from 'antd'
+import { PlusOutlined, EyeOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import { getAssignments, deleteAssignment } from '../../api/assignment'
 
 const { Title } = Typography
+const { RangePicker } = DatePicker
+const { Option } = Select
 
 const AssignmentList = () => {
   const navigate = useNavigate()
+  const [form] = Form.useForm()
   const [dataSource, setDataSource] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [loading, setLoading] = useState(false)
+  const [filters, setFilters] = useState({})
 
   const fetchAssignments = async () => {
     setLoading(true)
     try {
-      const res = await getAssignments({ page, pageSize })
+      const params = {
+        page,
+        pageSize,
+        ...filters
+      }
+      const res = await getAssignments(params)
       setDataSource(res.assignments || [])
       setTotal(res.total || 0)
     } catch (error) {
@@ -30,7 +54,7 @@ const AssignmentList = () => {
 
   useEffect(() => {
     fetchAssignments()
-  }, [page, pageSize])
+  }, [page, pageSize, filters])
 
   const getStatusTag = (isOverdue) => {
     if (isOverdue) {
@@ -58,13 +82,47 @@ const AssignmentList = () => {
     setPageSize(pageSize)
   }
 
+  const handleSearch = (values) => {
+    const newFilters = {}
+    if (values.title) {
+      newFilters.title = values.title
+    }
+    if (values.dateRange && values.dateRange.length === 2) {
+      newFilters.startDate = values.dateRange[0].startOf('day').format('YYYY-MM-DD HH:mm:ss')
+      newFilters.endDate = values.dateRange[1].endOf('day').format('YYYY-MM-DD HH:mm:ss')
+    }
+    if (values.graded !== undefined && values.graded !== '') {
+      newFilters.graded = values.graded
+    }
+    setPage(1)
+    setFilters(newFilters)
+  }
+
+  const handleReset = () => {
+    form.resetFields()
+    setFilters({})
+    setPage(1)
+  }
+
   const columns = [
     {
       title: '作业标题',
       dataIndex: 'title',
       key: 'title',
       width: 200,
-      ellipsis: true
+      ellipsis: true,
+      render: (text, record) => (
+        <div>
+          <div>{text}</div>
+          {(record.courseName || record.semester || record.week) && (
+            <div style={{ color: '#999', fontSize: 12, marginTop: 4 }}>
+              {record.courseName && <span>{record.courseName}</span>}
+              {record.semester && <span style={{ marginLeft: 8 }}>{record.semester}</span>}
+              {record.week && <span style={{ marginLeft: 8 }}>第{record.week}周</span>}
+            </div>
+          )}
+        </div>
+      )
     },
     {
       title: '截止时间',
@@ -81,10 +139,13 @@ const AssignmentList = () => {
       render: (isOverdue) => getStatusTag(isOverdue)
     },
     {
-      title: '提交人数',
+      title: '提交/批改',
       key: 'submissionCount',
-      width: 100,
-      render: (_, record) => record._count?.submissions || 0
+      width: 120,
+      render: (_, record) => {
+        const total = record._count?.submissions || 0
+        return <span>{total} 人</span>
+      }
     },
     {
       title: '发布时间',
@@ -135,6 +196,67 @@ const AssignmentList = () => {
           发布作业
         </Button>
       </div>
+
+      <Card style={{ marginBottom: 16 }}>
+        <Form
+          form={form}
+          layout="inline"
+          onFinish={handleSearch}
+          initialValues={{ graded: '' }}
+        >
+          <Row gutter={16} style={{ width: '100%' }}>
+            <Col xs={24} sm={12} md={8} style={{ marginBottom: 12 }}>
+              <Form.Item name="title" label="作业名称" style={{ marginBottom: 0 }}>
+                <Input
+                  placeholder="请输入作业名称"
+                  allowClear
+                  prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={10} style={{ marginBottom: 12 }}>
+              <Form.Item name="dateRange" label="发布时间" style={{ marginBottom: 0 }}>
+                <RangePicker
+                  style={{ width: '100%' }}
+                  format="YYYY-MM-DD"
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={6} style={{ marginBottom: 12 }}>
+              <Form.Item name="graded" label="批改状态" style={{ marginBottom: 0 }}>
+                <Select
+                  placeholder="全部"
+                  allowClear
+                  style={{ width: '100%' }}
+                >
+                  <Option value="true">已批改</Option>
+                  <Option value="false">未批改/部分批改</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row>
+            <Col span={24} style={{ textAlign: 'right' }}>
+              <Space>
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={handleReset}
+                >
+                  重置
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<SearchOutlined />}
+                  htmlType="submit"
+                >
+                  搜索
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        </Form>
+      </Card>
+
       <Table
         columns={columns}
         dataSource={dataSource}

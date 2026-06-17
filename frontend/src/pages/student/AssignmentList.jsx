@@ -1,46 +1,58 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Row, Col, Tag, Button, Spin, Empty, message, Typography } from 'antd'
+import {
+  Card,
+  Row,
+  Col,
+  Tag,
+  Button,
+  Spin,
+  Empty,
+  message,
+  Typography,
+  Form,
+  Input,
+  Select,
+  InputNumber,
+  Space
+} from 'antd'
 import {
   ClockCircleOutlined,
   CheckCircleOutlined,
   UserOutlined,
-  ArrowRightOutlined
+  ArrowRightOutlined,
+  SearchOutlined,
+  ReloadOutlined,
+  TrophyOutlined
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import { getAssignments } from '../../api/assignment'
-import { getMySubmissions } from '../../api/submission'
 
 const { Title } = Typography
+const { Option } = Select
+
+const generateSemesters = () => {
+  const currentYear = new Date().getFullYear()
+  const semesters = []
+  for (let year = currentYear - 2; year <= currentYear + 1; year++) {
+    semesters.push(`${year}-${year + 1}-1`)
+    semesters.push(`${year}-${year + 1}-2`)
+  }
+  return semesters
+}
 
 const AssignmentList = () => {
   const [assignments, setAssignments] = useState([])
   const [loading, setLoading] = useState(false)
+  const [form] = Form.useForm()
+  const [filters, setFilters] = useState({})
   const navigate = useNavigate()
 
   const fetchAssignments = async () => {
     setLoading(true)
     try {
-      const [assignmentsRes, submissionsRes] = await Promise.all([
-        getAssignments(),
-        getMySubmissions()
-      ])
-
-      const assignmentList = assignmentsRes.assignments || []
-      const submissions = submissionsRes.submissions || []
-
-      const submissionMap = {}
-      submissions.forEach(sub => {
-        submissionMap[sub.assignmentId] = sub
-      })
-
-      const listWithStatus = assignmentList.map(assignment => ({
-        ...assignment,
-        mySubmission: submissionMap[assignment.id] || null,
-        submitted: !!submissionMap[assignment.id]
-      }))
-
-      setAssignments(listWithStatus)
+      const assignmentsRes = await getAssignments(filters)
+      setAssignments(assignmentsRes.assignments || [])
     } catch (error) {
       message.error(error?.message || '获取作业列表失败')
     } finally {
@@ -50,9 +62,21 @@ const AssignmentList = () => {
 
   useEffect(() => {
     fetchAssignments()
-  }, [])
+  }, [filters])
 
   const getStatusTag = (assignment) => {
+    if (assignment.derivedStatus === '已评分') {
+      return (
+        <Tag icon={<TrophyOutlined />} color="gold">
+          已评分
+          {assignment.mySubmission?.score !== null && assignment.mySubmission?.score !== undefined && (
+            <span style={{ marginLeft: 4 }}>
+              {assignment.mySubmission.score}分
+            </span>
+          )}
+        </Tag>
+      )
+    }
     if (assignment.submitted) {
       const status = assignment.mySubmission?.status
       if (status === 'OVERDUE') {
@@ -76,6 +100,30 @@ const AssignmentList = () => {
     navigate(`/student/assignments/${id}`)
   }
 
+  const handleSearch = (values) => {
+    const newFilters = {}
+    if (values.courseName) {
+      newFilters.courseName = values.courseName
+    }
+    if (values.semester) {
+      newFilters.semester = values.semester
+    }
+    if (values.week) {
+      newFilters.week = values.week
+    }
+    if (values.status) {
+      newFilters.status = values.status
+    }
+    setFilters(newFilters)
+  }
+
+  const handleReset = () => {
+    form.resetFields()
+    setFilters({})
+  }
+
+  const semesters = generateSemesters()
+
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: 100 }}>
@@ -87,6 +135,85 @@ const AssignmentList = () => {
   return (
     <div>
       <Title level={3} style={{ marginTop: 0, marginBottom: 24 }}>待办作业</Title>
+
+      <Card style={{ marginBottom: 16 }}>
+        <Form
+          form={form}
+          layout="inline"
+          onFinish={handleSearch}
+        >
+          <Row gutter={16} style={{ width: '100%' }}>
+            <Col xs={24} sm={12} md={6} style={{ marginBottom: 12 }}>
+              <Form.Item name="semester" label="学期" style={{ marginBottom: 0 }}>
+                <Select
+                  placeholder="全部学期"
+                  allowClear
+                  showSearch
+                  style={{ width: '100%' }}
+                >
+                  {semesters.map(sem => (
+                    <Option key={sem} value={sem}>{sem.replace(/-(\d)$/, ' 第$1学期')}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={6} style={{ marginBottom: 12 }}>
+              <Form.Item name="week" label="周次" style={{ marginBottom: 0 }}>
+                <InputNumber
+                  min={1}
+                  max={30}
+                  placeholder="周次"
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={6} style={{ marginBottom: 12 }}>
+              <Form.Item name="courseName" label="课程" style={{ marginBottom: 0 }}>
+                <Input
+                  placeholder="课程名称"
+                  allowClear
+                  prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={6} style={{ marginBottom: 12 }}>
+              <Form.Item name="status" label="状态" style={{ marginBottom: 0 }}>
+                <Select
+                  placeholder="全部状态"
+                  allowClear
+                  style={{ width: '100%' }}
+                >
+                  <Option value="进行中">待提交（进行中）</Option>
+                  <Option value="已提交">已提交</Option>
+                  <Option value="已评分">已评分</Option>
+                  <Option value="逾期提交">已逾期</Option>
+                  <Option value="已截止">已截止（未提交）</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row>
+            <Col span={24} style={{ textAlign: 'right' }}>
+              <Space>
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={handleReset}
+                >
+                  重置
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<SearchOutlined />}
+                  htmlType="submit"
+                >
+                  筛选
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        </Form>
+      </Card>
+
       {assignments.length === 0 ? (
         <Empty description="暂无作业" />
       ) : (
@@ -112,10 +239,18 @@ const AssignmentList = () => {
                   <Card.Meta
                     title={assignment.title}
                     description={
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#666', fontSize: 13 }}>
-                        <UserOutlined />
-                        {assignment.teacher?.name || '未知教师'}
-                      </span>
+                      <div>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#666', fontSize: 13 }}>
+                          <UserOutlined />
+                          {assignment.teacher?.name || '未知教师'}
+                        </span>
+                        {(assignment.courseName || assignment.semester || assignment.week) && (
+                          <div style={{ color: '#999', fontSize: 12, marginTop: 4 }}>
+                            {assignment.courseName && <span>{assignment.courseName}</span>}
+                            {assignment.week && <span style={{ marginLeft: assignment.courseName ? 8 : 0 }}>第{assignment.week}周</span>}
+                          </div>
+                        )}
+                      </div>
                     }
                   />
                 </div>

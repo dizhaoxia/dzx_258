@@ -9,7 +9,7 @@ const uploadBasePath = path.join(__dirname, '../../uploads')
 
 export const createAssignment = async (req, res) => {
   try {
-    const { title, description, deadline } = req.body
+    const { title, description, deadline, courseName, semester, week } = req.body
     const file = req.file
 
     if (!title || !description || !deadline) {
@@ -36,7 +36,10 @@ export const createAssignment = async (req, res) => {
         teacherId: req.user.id,
         fileName,
         filePath: file ? path.relative(path.join(__dirname, '../..'), file.path) : null,
-        fileSize: file ? file.size : null
+        fileSize: file ? file.size : null,
+        courseName: courseName || null,
+        semester: semester || null,
+        week: week ? parseInt(week) : null
       },
       include: {
         teacher: {
@@ -60,25 +63,62 @@ export const createAssignment = async (req, res) => {
 
 export const getAssignments = async (req, res) => {
   try {
-    const { page = 1, pageSize = 10, status } = req.query
+    const {
+      page = 1,
+      pageSize = 10,
+      status,
+      title,
+      courseName,
+      semester,
+      week,
+      startDate,
+      endDate,
+      graded
+    } = req.query
     const skip = (page - 1) * pageSize
 
     let where = {}
 
     if (req.user.role === 'TEACHER') {
       where.teacherId = req.user.id
+      if (title) {
+        where.title = { contains: title }
+      }
+      if (startDate || endDate) {
+        where.createdAt = {}
+        if (startDate) where.createdAt.gte = new Date(startDate)
+        if (endDate) where.createdAt.lte = new Date(endDate)
+      }
     }
 
-    const assignments = await prisma.assignment.findMany({
-      where,
-      include: {
-        teacher: {
-          select: { id: true, name: true }
-        },
-        _count: {
-          select: { submissions: true }
-        }
+    if (req.user.role === 'STUDENT') {
+      if (courseName) {
+        where.courseName = { contains: courseName }
+      }
+      if (semester) {
+        where.semester = semester
+      }
+      if (week) {
+        where.week = parseInt(week)
+      }
+    }
+
+    const includeConfig = {
+      teacher: {
+        select: { id: true, name: true }
       },
+      submissions: req.user.role === 'STUDENT' ? {
+        where: { studentId: req.user.id },
+        take: 1
+      } : undefined,
+      _count: {
+        select: { submissions: true }
+      }
+    }
+
+    let assignments = await prisma.assignment.findMany({
+      where,
+      include: includeConfig,
       orderBy: { createdAt: 'desc' },
       skip: parseInt(skip),
       take: parseInt(pageSize)
@@ -87,18 +127,63 @@ export const getAssignments = async (req, res) => {
     const total = await prisma.assignment.count({ where })
 
     const now = new Date()
-    const assignmentsWithStatus = assignments.map(assignment => {
+    let assignmentsWithStatus = assignments.map(assignment => {
       const isOverdue = now > new Date(assignment.deadline)
+      const mySubmission = req.user.role === 'STUDENT'
+        ? (assignment.submissions && assignment.submissions.length > 0 ? assignment.submissions[0] : null)
+        : null
+      const submitted = !!mySubmission
+      const isGraded = mySubmission && mySubmission.status === 'GRADED'
+
+      let derivedStatus = '进行中'
+      if (isOverdue && !submitted) derivedStatus = '已截止'
+      if (submitted && mySubmission?.status === 'OVERDUE') derivedStatus = '逾期提交'
+      if (submitted && mySubmission?.status === 'SUBMITTED') derivedStatus = '已提交'
+      if (submitted && isGraded) derivedStatus = '已评分'
+
       return {
         ...assignment,
+        submissions: undefined,
         isOverdue,
-        status: isOverdue ? '已截止' : '进行中'
+        submitted,
+        isGraded,
+        mySubmission,
+        status: isOverdue ? '已截止' : '进行中',
+        derivedStatus
       }
     })
 
+    if (status && req.user.role === 'STUDENT') {
+      assignmentsWithStatus = assignmentsWithStatus.filter(a => a.derivedStatus === status)
+    }
+
+    if (graded !== undefined && req.user.role === 'TEACHER') {
+      const assignmentIds = assignmentsWithStatus.map(a => a.id)
+      const submissions = await prisma.submission.findMany({
+        where: { assignmentId: { in: assignmentIds } },
+        select: { assignmentId: true, score: true }
+      })
+
+      const gradedMap = {}
+      submissions.forEach(s => {
+        if (!gradedMap[s.assignmentId]) {
+          gradedMap[s.assignmentId] = { total: 0, graded: 0 }
+        }
+        gradedMap[s.assignmentId].total++
+        if (s.score !== null) gradedMap[s.assignmentId].graded++
+      })
+
+      assignmentsWithStatus = assignmentsWithStatus.filter(a => {
+        const info = gradedMap[a.id] || { total: 0, graded: 0 }
+        if (graded === 'true') return info.graded > 0
+        if (graded === 'false') return info.total === 0 || info.graded < info.total
+        return true
+      })
+    }
+
     res.json({
       assignments: assignmentsWithStatus,
-      total,
+      total: assignmentsWithStatus.length,
       page: parseInt(page),
       pageSize: parseInt(pageSize)
     })

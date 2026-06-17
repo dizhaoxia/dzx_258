@@ -110,8 +110,31 @@ export const submitAssignment = async (req, res) => {
 
 export const getMySubmissions = async (req, res) => {
   try {
+    const {
+      courseName,
+      semester,
+      week,
+      status
+    } = req.query
+
+    let submissionWhere = { studentId: req.user.id }
+    let assignmentWhere = {}
+
+    if (courseName) {
+      assignmentWhere.courseName = { contains: courseName }
+    }
+    if (semester) {
+      assignmentWhere.semester = semester
+    }
+    if (week) {
+      assignmentWhere.week = parseInt(week)
+    }
+
     const submissions = await prisma.submission.findMany({
-      where: { studentId: req.user.id },
+      where: {
+        ...submissionWhere,
+        assignment: Object.keys(assignmentWhere).length > 0 ? assignmentWhere : undefined
+      },
       include: {
         assignment: {
           include: {
@@ -124,7 +147,28 @@ export const getMySubmissions = async (req, res) => {
       orderBy: { submittedAt: 'desc' }
     })
 
-    res.json({ submissions })
+    let filteredSubmissions = submissions
+    if (status) {
+      const now = new Date()
+      filteredSubmissions = submissions.filter(sub => {
+        const deadline = new Date(sub.assignment.deadline)
+        if (status === '待提交') {
+          return false
+        }
+        if (status === '已逾期') {
+          return sub.status === 'OVERDUE'
+        }
+        if (status === '已提交') {
+          return sub.status === 'SUBMITTED'
+        }
+        if (status === '已评分') {
+          return sub.status === 'GRADED'
+        }
+        return true
+      })
+    }
+
+    res.json({ submissions: filteredSubmissions })
   } catch (error) {
     console.error('获取我的提交错误:', error)
     res.status(500).json({ message: '服务器错误' })
@@ -194,7 +238,8 @@ export const gradeSubmission = async (req, res) => {
       where: { id: parseInt(id) },
       data: {
         score: score ? parseInt(score) : null,
-        feedback: feedback || null
+        feedback: feedback || null,
+        status: 'GRADED'
       },
       include: {
         student: {
