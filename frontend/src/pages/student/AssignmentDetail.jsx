@@ -46,6 +46,7 @@ const AssignmentDetail = () => {
   const [previewFile, setPreviewFile] = useState(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [mySubmission, setMySubmission] = useState(null)
+  const [showUploader, setShowUploader] = useState(false)
 
   const fetchDetail = async () => {
     setLoading(true)
@@ -116,6 +117,7 @@ const AssignmentDetail = () => {
       })
       message.success('提交成功')
       setSelectedFile(null)
+      setShowUploader(false)
       setUploadProgress(0)
       fetchDetail()
     } catch (error) {
@@ -153,6 +155,7 @@ const AssignmentDetail = () => {
 
   const handleReupload = () => {
     setSelectedFile(null)
+    setShowUploader(true)
   }
 
   const renderAttachment = () => {
@@ -253,7 +256,7 @@ const AssignmentDetail = () => {
       )
     }
 
-    if (mySubmission && !selectedFile) {
+    if (mySubmission && !selectedFile && !showUploader) {
       return (
         <div>
           <Button
@@ -282,7 +285,7 @@ const AssignmentDetail = () => {
                   {(selectedFile.size / 1024).toFixed(2)} KB
                 </div>
               </div>
-              <Button type="link" size="small" onClick={handleReupload}>
+              <Button type="link" size="small" onClick={() => { setSelectedFile(null); setShowUploader(true); }}>
                 重新选择
               </Button>
             </div>

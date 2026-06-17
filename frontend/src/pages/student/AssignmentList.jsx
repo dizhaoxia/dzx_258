@@ -4,7 +4,8 @@ import {
   ClockCircleOutlined,
   CheckCircleOutlined,
   UserOutlined,
-  ArrowRightOutlined
+  ArrowRightOutlined,
+  FileTextOutlined
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
@@ -117,6 +118,11 @@ const AssignmentList = () => {
                       </span>
                     }
                   />
+                  {assignment.fileName && (
+                    <Tag color="blue" icon={<FileTextOutlined />} style={{ marginLeft: 8 }}>
+                      附件
+                    </Tag>
+                  )}
                 </div>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <div>

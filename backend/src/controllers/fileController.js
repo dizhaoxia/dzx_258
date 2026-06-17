@@ -9,6 +9,11 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const router = express.Router()
 
+function getSafeContentDisposition(filename, disposition = 'inline') {
+  const encodedName = encodeURIComponent(filename)
+  return `${disposition}; filename="${encodedName}"; filename*=UTF-8''${encodedName}`
+}
+
 router.get('/assignment/:id', auth, async (req, res) => {
   try {
     const { id } = req.params
@@ -35,7 +40,7 @@ router.get('/assignment/:id', auth, async (req, res) => {
     const fileSize = stat.size
     const range = req.headers.range
 
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(assignment.fileName)}"`)
+    res.setHeader('Content-Disposition', getSafeContentDisposition(assignment.fileName, 'inline'))
     res.setHeader('Content-Type', getContentType(assignment.fileName))
     res.setHeader('Accept-Ranges', 'bytes')
 
@@ -92,7 +97,7 @@ router.get('/submission/:id', auth, async (req, res) => {
     const fileSize = stat.size
     const range = req.headers.range
 
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(submission.fileName)}"`)
+    res.setHeader('Content-Disposition', getSafeContentDisposition(submission.fileName, 'inline'))
     res.setHeader('Content-Type', getContentType(submission.fileName))
     res.setHeader('Accept-Ranges', 'bytes')
 
@@ -136,7 +141,10 @@ router.get('/assignment/download/:id', auth, async (req, res) => {
       return res.status(404).json({ message: '文件不存在' })
     }
 
-    res.download(filePath, assignment.fileName)
+    res.setHeader('Content-Disposition', getSafeContentDisposition(assignment.fileName, 'attachment'))
+    res.setHeader('Content-Type', getContentType(assignment.fileName))
+    const file = fs.createReadStream(filePath)
+    file.pipe(res)
   } catch (error) {
     console.error('下载作业附件错误:', error)
     res.status(500).json({ message: '服务器错误' })
@@ -170,7 +178,10 @@ router.get('/submission/download/:id', auth, async (req, res) => {
       return res.status(404).json({ message: '文件不存在' })
     }
 
-    res.download(filePath, submission.fileName)
+    res.setHeader('Content-Disposition', getSafeContentDisposition(submission.fileName, 'attachment'))
+    res.setHeader('Content-Type', getContentType(submission.fileName))
+    const file = fs.createReadStream(filePath)
+    file.pipe(res)
   } catch (error) {
     console.error('下载提交文件错误:', error)
     res.status(500).json({ message: '服务器错误' })
