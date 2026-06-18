@@ -20,7 +20,8 @@ import {
   DownloadOutlined,
   FileTextOutlined,
   TrophyOutlined,
-  CheckCircleOutlined
+  CheckCircleOutlined,
+  EmptyOutlined
 } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import dayjs from 'dayjs'
@@ -162,19 +163,23 @@ const AssignmentDetail = () => {
     window.open(`/api/files/assignment/download/${assignment.id}`, '_blank')
   }
 
-  const handleBatchDownload = () => {
+  const handleBatchDownload = async () => {
     if (submissions.length === 0) {
       message.warning('暂无学生提交')
       return
     }
     setDownloading(prev => ({ ...prev, batch: true }))
     try {
-      batchDownloadSubmissions(id)
-      message.success('批量下载已开始')
+      const result = await batchDownloadSubmissions(id, `${assignment?.title || '作业'}_提交作业.zip`)
+      if (result.success) {
+        message.success('批量下载成功')
+      } else {
+        message.error(result.message || '批量下载失败')
+      }
     } catch (error) {
-      message.error('批量下载失败')
+      message.error(error?.message || '批量下载失败')
     } finally {
-      setTimeout(() => setDownloading(prev => ({ ...prev, batch: false })), 1000)
+      setDownloading(prev => ({ ...prev, batch: false }))
     }
   }
 
@@ -186,22 +191,30 @@ const AssignmentDetail = () => {
     }
     try {
       const res = await searchStudents(value.trim())
-      setSearchResults(res.students || [])
-      setSearchDropdownOpen((res.students || []).length > 0)
+      const students = res.students || []
+      setSearchResults(students)
+      if (students.length === 0) {
+        message.info('未找到匹配的学生，请尝试其他关键词')
+      }
+      setSearchDropdownOpen(true)
     } catch (error) {
       message.error('搜索学生失败')
     }
   }
 
-  const handleDownloadStudentAll = (student) => {
+  const handleDownloadStudentAll = async (student) => {
     setDownloading(prev => ({ ...prev, [student.id]: true }))
     try {
-      downloadStudentSubmissions(student.id)
-      message.success(`正在下载 ${student.name} 的历次作业`)
+      const result = await downloadStudentSubmissions(student.id, `${student.name}_历次作业.zip`)
+      if (result.success) {
+        message.success(`${student.name} 的历次作业下载成功`)
+      } else {
+        message.error(result.message || '下载失败')
+      }
     } catch (error) {
-      message.error('下载失败')
+      message.error(error?.message || '下载失败')
     } finally {
-      setTimeout(() => setDownloading(prev => ({ ...prev, [student.id]: false })), 1000)
+      setDownloading(prev => ({ ...prev, [student.id]: false }))
     }
     setSearchDropdownOpen(false)
     setSearchName('')
@@ -397,7 +410,7 @@ const AssignmentDetail = () => {
                 }}
                 value={searchName}
               />
-              {searchDropdownOpen && searchResults.length > 0 && (
+              {searchDropdownOpen && (
                 <div
                   style={{
                     position: 'absolute',
@@ -414,37 +427,51 @@ const AssignmentDetail = () => {
                     marginTop: 4
                   }}
                 >
-                  {searchResults.map((student) => (
-                  <div
-                    key={student.id}
-                    style={{
-                      padding: '12px 16px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      borderBottom: '1px solid #f0f0f0'
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f5f5f5' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = '#fff' }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 500 }}>{student.name}</div>
-                      <div style={{ fontSize: 12, color: '#999' }}>
-                        {student.studentNo} {student.className || ''}
-                      </div>
-                    </div>
-                    <Button
-                      type="link"
-                      size="small"
-                      icon={<DownloadOutlined />}
-                      loading={downloading[student.id]}
-                      onClick={() => handleDownloadStudentAll(student)}
+                  {searchResults.length > 0 ? (
+                    searchResults.map((student) => (
+                    <div
+                      key={student.id}
+                      style={{
+                        padding: '12px 16px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        borderBottom: '1px solid #f0f0f0'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#f5f5f5' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = '#fff' }}
                     >
-                      下载历次作业
-                    </Button>
-                  </div>
-                  ))}
+                      <div>
+                        <div style={{ fontWeight: 500 }}>{student.name}</div>
+                        <div style={{ fontSize: 12, color: '#999' }}>
+                          {student.studentNo} {student.className || ''}
+                        </div>
+                      </div>
+                      <Button
+                        type="link"
+                        size="small"
+                        icon={<DownloadOutlined />}
+                        loading={downloading[student.id]}
+                        onClick={() => handleDownloadStudentAll(student)}
+                      >
+                        下载历次作业
+                      </Button>
+                    </div>
+                    ))
+                  ) : (
+                    <div
+                      style={{
+                        padding: '20px 16px',
+                        textAlign: 'center',
+                        color: '#999',
+                        fontSize: 14
+                      }}
+                    >
+                      <EmptyOutlined style={{ fontSize: 24, marginBottom: 8, display: 'block' }} />
+                      未找到匹配的学生
+                    </div>
+                  )}
                 </div>
               )}
             </div>

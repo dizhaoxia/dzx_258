@@ -20,15 +20,26 @@ api.interceptors.request.use(
 )
 
 api.interceptors.response.use(
-  (response) => {
+  async (response) => {
+    if (response.config.responseType === 'blob') {
+      if (response.headers['content-type']?.includes('application/json')) {
+        const text = await response.data.text()
+        const data = JSON.parse(text)
+        return Promise.reject(data)
+      }
+      return response.data
+    }
     return response.data
   },
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
       useUserStore.getState().logout()
       if (!window.location.pathname.startsWith('/login')) {
         window.location.href = '/login'
       }
+    }
+    if (error.response?.config?.responseType === 'blob' && error.response?.data) {
+      return Promise.reject(error.response.data)
     }
     return Promise.reject(error.response?.data || { message: '请求失败' })
   }
